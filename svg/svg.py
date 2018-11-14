@@ -30,40 +30,52 @@ from .geometry import *
 svg_ns = '{http://www.w3.org/2000/svg}'
 
 # Regex commonly used
+#正则表达式常用
 number_re = r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?'
 unit_re = r'em|ex|px|in|cm|mm|pt|pc|%'
 
 # Unit converter
+#单位转换器
 unit_convert = {
-        None: 1,           # Default unit (same as pixel)
-        'px': 1,           # px: pixel. Default SVG unit
+        None: 1,           # Default unit (same as pixel) (默认单位--像素)
+        'px': 1,           # px: pixel. Default SVG unit (像素。 默认SVG单位)
         'em': 10,          # 1 em = 10 px FIXME
         'ex': 5,           # 1 ex =  5 px FIXME
-        'in': 96,          # 1 in = 96 px
+        'in': 96,          # 1 in = 96 px TODO： 英寸 inches （1英寸 == 2.54厘米）
         'cm': 96 / 2.54,   # 1 cm = 1/2.54 in
         'mm': 96 / 25.4,   # 1 mm = 1/25.4 in
-        'pt': 96 / 72.0,   # 1 pt = 1/72 in
+        'pt': 96 / 72.0,   # 1 pt = 1/72 in TODO：点 Points （1 点 = 1/72英寸 ）
         'pc': 96 / 6.0,    # 1 pc = 1/6 in
-        '%' :  1 / 100.0   # 1 percent
+        '%' :  1 / 100.0   # 1 percent #百分比
         }
-
+#变形 类
 class Transformable:
     '''Abstract class for objects that can be geometrically drawn & transformed'''
+    ''' 可以几何绘制和转换的对象的抽象类 '''
     def __init__(self, elt=None):
         # a 'Transformable' is represented as a list of Transformable items
+        #'可转换'表示为可转换项目列表
         self.items = []
+
+        #hex 函数用于将10进制整数转换成16进制整数。 x-10进制整数，返回16进制整数
+        #这里的作用是生成一个独有的id
         self.id = hex(id(self))
         # Unit transformation matrix on init
+        #init上的单位变换矩阵
         self.matrix = Matrix()
+        #默认视口为800x600
         self.viewport = Point(800, 600) # default viewport is 800x600
         if elt is not None:
             self.id = elt.get('id', self.id)
             # Parse transform attibute to update self.matrix
+            #解析变换属性以更新self.matrix
             self.getTransformations(elt)
 
     def bbox(self):
         '''Bounding box'''
-        bboxes = [x.bbox() for x in self.items]
+        ''' 计算边界盒子 （碰撞盒子） '''
+
+        bboxes = [x.bbox() for x in self.items]  #有几个可转换对象
         xmin = min([b[0].x for b in bboxes])
         xmax = max([b[1].x for b in bboxes])
         ymin = min([b[0].y for b in bboxes])
@@ -73,15 +85,21 @@ class Transformable:
 
     # Parse transform field
     def getTransformations(self, elt):
+        '''解析变换域'''
         t = elt.get('transform')
         if t is None: return
 
+        #svg 的变化方式列表
         svg_transforms = [
                 'matrix', 'translate', 'scale', 'rotate', 'skewX', 'skewY']
 
         # match any SVG transformation with its parameter (until final parenthese)
         # [^)]*    == anything but a closing parenthese
         # '|'.join == OR-list of SVG transformations
+
+        #匹配任何SVG转换及其参数（直到最后括号）
+        #[ ^]] * == 除了结束括号之外的任何东西
+        #'|'.join == OR - SVG转换列表
         transforms = re.findall(
                 '|'.join([x + '[^)]*\)' for x in svg_transforms]), t)
 
@@ -89,6 +107,7 @@ class Transformable:
             op, arg = t.split('(')
             op = op.strip()
             # Keep only numbers
+            #只保留数字
             arg = [float(x) for x in re.findall(number_re, arg)]
             print('transform: ' + op + ' '+ str(arg))
 
@@ -131,10 +150,12 @@ class Transformable:
 
     def length(self, v, mode='xy'):
         # Handle empty (non-existing) length element
+        #处理空（不存在）长度元素
         if v is None:
             return 0
 
         # Get length value
+        #获取长度值
         m = re.search(number_re, v)
         if m: value = m.group(0)
         else: raise TypeError(v + 'is not a valid length')
@@ -165,6 +186,12 @@ class Transformable:
         # http://rightfootin.blogspot.fr/2006/09/more-on-python-flatten.html
         # Assigning a slice a[i:i+1] with a list actually replaces the a[i]
         # element with the content of the assigned list
+
+        '''将SVG对象嵌套列表展平为平面（1-D）列表，
+        删除群组'''
+        #http://rightfootin.blogspot.fr/2006/09/more-on-python-flatten.html
+        #用列表分配切片a [i：i + 1]实际上替换了a [i]
+        #lement包含已分配列表的内容'''
         i = 0
         flat = copy.deepcopy(self.items)
         while i < len(flat):
@@ -192,6 +219,9 @@ class Svg(Transformable):
     '''SVG class: use parse to parse a file'''
     # class Svg handles the <svg> tag
     # tag = 'svg'
+    '''SVG类：使用解析来解析文件'''
+    # class类处理<svg>标签
+    # tag ='svg'
 
     def __init__(self, filename=None):
         Transformable.__init__(self)
@@ -203,19 +233,22 @@ class Svg(Transformable):
         tree = etree.parse(filename)
         self.root = tree.getroot()
         if self.root.tag != svg_ns + 'svg':
-            raise TypeError('file %s does not seem to be a valid SVG file', filename)
+            raise TypeError('file %s does not seem to be a valid SVG file', filename) #文件％s似乎不是有效的SVG文件
 
         # Create a top Group to group all other items (useful for viewBox elt)
+        #创建一个顶级组以对所有其他项进行分组（对viewBox elt很有用）
         top_group = Group()
         self.items.append(top_group)
 
         # SVG dimension
+        # 得到 SVG 的尺寸
         width = self.xlength(self.root.get('width'))
         height = self.ylength(self.root.get('height'))
         # update viewport
+        #更新视口
         top_group.viewport = Point(width, height)
 
-        # viewBox
+        # viewBox (显示盒子)
         if self.root.get('viewBox') is not None:
             viewBox = re.findall(number_re, self.root.get('viewBox'))
             sx = width / float(viewBox[2])
@@ -225,6 +258,7 @@ class Svg(Transformable):
             top_group.matrix = Matrix([sx, 0, 0, sy, tx, ty])
 
         # Parse XML elements hierarchically with groups <g>
+        #使用组 < g > 分层次地解析XML元素
         top_group.append(self.root)
 
         self.transform()
@@ -243,6 +277,8 @@ class Svg(Transformable):
 class Group(Transformable):
     '''Handle svg <g> elements'''
     # class Group handles the <g> tag
+    '''处理svg <g>元素'''
+    # class group处理<g>标记
     tag = 'g'
 
     def __init__(self, elt=None):
@@ -252,16 +288,19 @@ class Group(Transformable):
         for elt in element:
             elt_class = svgClass.get(elt.tag, None)
             if elt_class is None:
-                print('No handler for element %s' % elt.tag)
+                print('No handler for element %s' % elt.tag) #没有元素的处理程序
                 continue
             # instanciate elt associated class (e.g. <path>: item = Path(elt)
+            #实例化elt关联类（例如<path>：item = Path（elt）
             item = elt_class(elt)
             # Apply group matrix to the newly created object
+            #将组矩阵应用于新创建的对象
             item.matrix = self.matrix * item.matrix
             item.viewport = self.viewport
 
             self.items.append(item)
             # Recursively append if elt is a <g> (group)
+            #如果elt是<g>（组），则递归追加
             if elt.tag == svg_ns + 'g':
                 item.append(elt)
 
@@ -280,14 +319,24 @@ class Matrix:
      (0, 0, 1))
     see http://www.w3.org/TR/SVG/coords.html#EstablishingANewUserSpace '''
 
+    '''SVG转换矩阵及其操作
+         SVG矩阵表示为6个值[a，b，c，d，e，f]的列表
+         （以下命名为vect）代表3x3矩阵
+         （(a, c, e）
+          （b, d, f）
+          （0, 0, 1)）
+    请参阅http://www.w3.org/TR/SVG/coords.html#EstablishingANewUserSpace'''
+
     def __init__(self, vect=[1, 0, 0, 1, 0, 0]):
         # Unit transformation vect by default
+        #单位转换vect默认情况下
         if len(vect) != 6:
             raise ValueError("Bad vect size %d" % len(vect))
         self.vect = list(vect)
 
     def __mul__(self, other):
         '''Matrix multiplication'''
+        #矩阵乘法
         if isinstance(other, Matrix):
             a = self.vect[0] * other.vect[0] + self.vect[2] * other.vect[1]
             b = self.vect[1] * other.vect[0] + self.vect[3] * other.vect[1]
@@ -331,10 +380,11 @@ class Path(Transformable):
 
     def parse(self, pathstr):
         """Parse path string and build elements list"""
+        '''解析路径字符串和构建元素列表'''
 
         pathlst = re.findall(number_re + r"|\ *[%s]\ *" % COMMANDS, pathstr)
 
-        pathlst.reverse()
+        pathlst.reverse()#反向
 
         command = None
         current_pt = Point(0,0)
@@ -364,6 +414,7 @@ class Path(Transformable):
                 self.items.append(MoveTo(current_pt))
 
                 # MoveTo with multiple coordinates means LineTo
+                #具有多个坐标的MoveTo表示LineTo
                 command = 'L'
 
             elif command == 'Z':
@@ -442,6 +493,7 @@ class Path(Transformable):
                 ry = pathlst.pop()
                 xrot = pathlst.pop()
                 # Arc flags are not necesarily sepatated numbers
+                #弧标志不一定是分开的数字
                 flags = pathlst.pop().strip()
                 large_arc_flag = flags[0]
                 if large_arc_flag not in '01':
@@ -667,12 +719,15 @@ class JSONEncoder(json.JSONEncoder):
         return obj.json()
 
 ## Code executed on module load ##
+##代码在模块加载时执行
 
 # SVG tag handler classes are initialized here
 # (classes must be defined before)
+#此处初始化SVG标记处理程序类（必须先定义类）
 import inspect
 svgClass = {}
 # Register all classes with attribute 'tag' in svgClass dict
+#在svgClass dict中注册属性为'tag'的所有类
 for name, cls in inspect.getmembers(sys.modules[__name__], inspect.isclass):
     tag = getattr(cls, 'tag', None)
     if tag:

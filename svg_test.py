@@ -22,8 +22,10 @@ def draw_with_cairo(cr, drawing):
                     cr.curve_to(a.x, a.y, b.x, b.y, c.x, c.y)
         if isinstance(d, svg.Circle):
             cx, cy = d.center.coord()
-            cr.move_to(cx+d.radius, cy)
-            cr.arc(cx, cy, d.radius, 0, 2*math.pi)
+            #cr.move_to(cx+d.radius, cy)
+            #cr.arc(cx, cy, d.radius, 0, 2*math.pi)
+            cr.move_to(cx, cy)
+            cr.arc(cx, cy,0, 0, 2*math.pi)
         if isinstance(d, svg.Rect):
             x1,y1 = d.P1.coord()
             x2,y2 = d.P2.coord()
