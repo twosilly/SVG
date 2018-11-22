@@ -43,7 +43,7 @@ unit_convert = {
         'ex': 5,           # 1 ex =  5 px FIXME
         'in': 96,          # 1 in = 96 px TODO： 英寸 inches （1英寸 == 2.54厘米）
         'cm': 96 / 2.54,   # 1 cm = 1/2.54 in
-        'mm': 96 / 25.4,   # 1 mm = 1/25.4 in #TODO: （1mm == 96/25.4px  1px == 25.4/96mm）
+        'mm': 96 / 25.4,   # 1 mm = 1/25.4 in
         'pt': 96 / 72.0,   # 1 pt = 1/72 in TODO：点 Points （1 点 = 1/72英寸 ）
         'pc': 96 / 6.0,    # 1 pc = 1/6 in
         '%' :  1 / 100.0   # 1 percent #百分比
